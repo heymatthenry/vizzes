@@ -1,0 +1,104 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+launches <- read_csv("data/launches.csv")
+agencies <- read_csv("data/agencies.csv")
+```
+```{r}
+launches %>% ggplot(aes(x = category)) +
+  geom_bar() +
+  ggtitle("Most space launches succeed!")
+```
+```{r}
+launches %>% 
+  group_by(launch_year) %>% 
+  summarize(pct_fail = mean(category == "F")) %>% 
+  ggplot(aes(x = launch_year, y = pct_fail)) +
+    geom_line() +
+    ggtitle("Launches have been pretty safe since the 70s")
+```
+```{r}
+launches %>% 
+  group_by(launch_year, agency_type) %>% 
+  summarize(pct_fail = mean(category == "F")) %>% 
+  ggplot(aes(x = launch_year, y = pct_fail)) +
+    geom_line(aes(color = agency_type))
+```
+
+```{r}
+launches %>% 
+  group_by(launch_year, agency_type) %>% 
+  summarize(num_launches = n()) %>% 
+  ggplot(aes(x = launch_year, y = num_launches)) +
+    geom_density(stat = "identity", aes(fill = agency_type), alpha = .5) +
+    theme_minimal() +
+    ggtitle("The space race gave way to a race for profit", 
+            subtitle = "M")
+```
+```{r}
+library(gridExtra)
+library(scales)
+
+launches %>% 
+  filter(state_code %in% c("US","SU","RU")) %>% 
+  group_by(launch_year, state_code) %>% 
+  count() %>% 
+  ggplot(aes(x = launch_year, y = n)) +
+    geom_bar(stat = "identity", aes(fill = state_code), width = 1) +
+    ggtitle("The private sector took over the space race", 
+            subtitle = "After the end of the Cold War, states ceded their predominance in aerospace\nengineering to private companies") +
+    scale_y_continuous(position = "right") +
+    scale_fill_manual(values = c("US" = "#383A6B", "SU" = "#BD271A", "RU" = "#bc6d65")) +
+    annotate("text", hjust = "left", x = 1965, 
+             y = 12, size = 4, label = "US", 
+             color = "white") +
+    annotate("text", hjust = "left", x = 1965, 
+             y = 90, size = 4, label = "USSR", 
+             color = "white") +
+    geom_segment(x = 1991.5, xend = 1991.5, y = 80, yend = 130) +
+    annotate("text", hjust = "left", label = "Dissolution of USSR", 
+             x = 1992, y = 125) +
+    theme_minimal() +
+    theme(axis.ticks.x = element_blank(),
+          axis.text.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.title = element_text(size = 16),
+          legend.position = "none") +
+    ylab("") +
+    xlab("") -> g1
+
+launches %>% 
+  mutate(public_private = ifelse(agency_type == "state", "public", "private")) %>% 
+  group_by(launch_year, public_private) %>% 
+  summarize(pct_launches_by_agency_type = n()/nrow(launches) * 100) %>% 
+  ggplot(aes(x = launch_year, y = pct_launches_by_agency_type)) +
+    geom_bar(stat = "identity", aes(fill = public_private), 
+             width = 1,
+             position = "fill") +
+    ggtitle("Percentage of launches by states vs. private actors") +
+    scale_fill_grey() +
+    scale_y_continuous(position = "right", labels = percent) +
+    annotate("text", hjust = "left", x = 1958, y = .2, 
+             size = 3, label = "Public") + 
+    annotate("text", hjust = "left", x = 2013, y = .85, 
+             size = 3, color = "white", label = "Private") + 
+    theme_minimal() +
+    theme(legend.position = "none",
+          panel.grid.minor.y = element_blank(),
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.title = element_text(hjust = .1, size = 11)) +
+    ylab("") +
+    xlab("") -> g2
+
+grid.arrange(g1, g2, nrow = 2, heights = 2:1)
+```
+
